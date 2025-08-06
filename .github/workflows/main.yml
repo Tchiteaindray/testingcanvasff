@@ -1,71 +1,33 @@
-name: Virtual Gesture Air Canvas Test
-on: [push, pull_request]
+name: Cross-Platform Compatibility Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   test:
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.10"]
-      fail-fast: false
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: [3.8, 3.9, 3.10, 3.11]
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          architecture: ${{ contains(matrix.os, 'macos') && 'arm64' || 'x64' }}
 
-      - name: Install system dependencies
-        run: |
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
-            sudo apt-get update && sudo apt-get install -y \
-              libgl1-mesa-glx \
-              libgtk2.0-0 \
-              libstdc++6
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            brew install cmake
-          fi
-
-      - name: Cache Python packages
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/pip
-            ~/Library/Caches/pip  # macOS
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Install Python dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install --no-cache-dir -r requirements.txt
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            pip install pywin32
-          fi
+          pip install -r requirements.txt
 
-      - name: Run headless tests
-        timeout-minutes: 10
+      - name: Run tests
         run: |
-          export DISPLAY=:99  # Virtual display for Linux
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
-            Xvfb :99 -screen 0 1024x768x16 &
-          fi
-          
-          python VirtualGestureAirCanvas.py --headless --ci-mode
-
-      - name: Upload test artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-${{ matrix.os }}
-          path: |
-            test_logs/
-            screenshots/
-            performance_metrics.json
-          retention-days: 3
+          VirtualGestureAirCanvas.pyw
